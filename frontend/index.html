@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>Smart Invoice Extractor</title>
+
+<style>
+
+body{
+font-family: Arial;
+background:lightgreen;
+padding:40px;
+text-align:center;
+}
+
+.container{
+background:white;
+padding:30px;
+border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+width:800px;
+margin:auto;
+}
+
+button{
+padding:10px 20px;
+background:#4CAF50;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+button:hover{
+background:#45a049;
+}
+
+img{
+max-width:300px;
+margin-top:20px;
+border-radius:6px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:20px;
+}
+
+th,td{
+border:1px solid #ddd;
+padding:8px;
+}
+
+th{
+background:#4CAF50;
+color:white;
+}
+
+pre{
+background:#222;
+color:#00ff9d;
+padding:10px;
+overflow:auto;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>📄 Smart Invoice Extractor</h2>
+
+<input type="file" id="fileInput">
+
+<br><br>
+
+<button onclick="extract()">Extract Invoice</button>
+
+<br>
+
+<img id="preview">
+
+<h3>Extracted Table</h3>
+
+<table id="table">
+<thead>
+<tr>
+<th>Description</th>
+<th>Qty</th>
+<th>Unit Price</th>
+<th>Total</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<h3>Grand Total: <span id="grand">0</span></h3>
+
+<h3>JSON Output</h3>
+<pre id="json"></pre>
+
+</div>
+
+<script>
+
+const input=document.getElementById("fileInput")
+const preview=document.getElementById("preview")
+
+input.onchange=()=>{
+ const file=input.files[0]
+ const reader=new FileReader()
+
+ reader.onload=()=>{
+  preview.src=reader.result
+ }
+
+ reader.readAsDataURL(file)
+}
+
+async function extract(){
+
+ const file=input.files[0]
+
+ if(!file){
+  alert("upload image")
+  return
+ }
+
+ const reader=new FileReader()
+
+ reader.onload=async()=>{
+
+  const base64=reader.result
+
+  const res=await fetch("http://localhost:5000/extract-invoice",{
+   method:"POST",
+   headers:{ "Content-Type":"application/json" },
+   body:JSON.stringify({ image:base64 })
+  })
+
+  const data=await res.json()
+
+  if(!data.items){
+   alert("Invoice items not detected")
+   document.getElementById("json").textContent=JSON.stringify(data,null,2)
+   return
+  }
+
+  const tbody=document.querySelector("#table tbody")
+  tbody.innerHTML=""
+
+  let total=0
+
+  data.items.forEach(i=>{
+
+   const tr=document.createElement("tr")
+
+   tr.innerHTML=`
+   <td>${i.description}</td>
+   <td>${i.quantity}</td>
+   <td>${i.unit_price}</td>
+   <td>${i.total}</td>
+   `
+
+   tbody.appendChild(tr)
+
+   total+=Number(i.total)
+  })
+
+  document.getElementById("grand").innerText=total
+  document.getElementById("json").textContent=JSON.stringify(data,null,2)
+
+ }
+
+ reader.readAsDataURL(file)
+
+}
+
+</script>
+
+</body>
+</html>
